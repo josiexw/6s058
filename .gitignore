@@ -1,0 +1,6 @@
+data/
+third-party/
+venv/
+__pycache__/
+*.log
+.DS_Store
