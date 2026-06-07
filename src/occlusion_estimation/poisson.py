@@ -17,6 +17,7 @@ POISSON_DEPTH = 7
 POISSON_SCALE = 1.2
 DENSITY_QUANTILE = 0.02
 CROP_EXPANSION_FRAC = 0.15
+LOG_ROOT = DATA_ROOT / "geometry_completion" / "logs" / "poisson"
 
 
 def estimate_normals(pcd: o3d.geometry.PointCloud):
@@ -94,6 +95,39 @@ def process_rock(data_root: Path, method: str, rock_id: str):
     save_mesh(out_dir / "poisson_mesh.ply", mesh)
 
 
+def run_subprocess_with_logging(method: str, rock_id: str):
+    log_dir = LOG_ROOT / method
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{rock_id}.log"
+
+    result = subprocess.run(
+        [sys.executable, __file__],
+        env={
+            **os.environ,
+            "POISSON_METHOD": method,
+            "POISSON_ROCK_ID": rock_id,
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    with open(log_path, "w", encoding="utf-8") as f:
+        if result.stdout:
+            f.write("[stdout]\n")
+            f.write(result.stdout)
+            if not result.stdout.endswith("\n"):
+                f.write("\n")
+        if result.stderr:
+            f.write("[stderr]\n")
+            f.write(result.stderr)
+            if not result.stderr.endswith("\n"):
+                f.write("\n")
+        f.write(f"[exit_code]\n{result.returncode}\n")
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Poisson subprocess failed for {method}/{rock_id}; see {log_path}")
+
+
 def main():
     method = os.environ.get("POISSON_METHOD")
     rock_id = os.environ.get("POISSON_ROCK_ID")
@@ -112,15 +146,7 @@ def main():
 
         for rock_id in rock_ids:
             try:
-                subprocess.run(
-                    [sys.executable, __file__],
-                    env={
-                        **os.environ,
-                        "POISSON_METHOD": method,
-                        "POISSON_ROCK_ID": rock_id,
-                    },
-                    stderr=subprocess.DEVNULL,
-                )
+                run_subprocess_with_logging(method, rock_id)
             except Exception as e:
                 print(f"Skipping {method}/{rock_id}: {e}")
 
