@@ -46,10 +46,6 @@ PER_SCENE_FIELDS = [
     "recon_method",
     "keep_ratio",
     "status",
-    "masked_valid_ratio",
-    "masked_points",
-    "mesh_vertices",
-    "mesh_triangles",
     "num_components",
     "largest_component_fraction",
     "visible_coverage_at_tau",
@@ -64,10 +60,6 @@ SUMMARY_FIELDS = [
     "num_attempted",
     "num_successful",
     "success_rate",
-    "masked_valid_ratio_mean",
-    "masked_points_mean",
-    "mesh_vertices_mean",
-    "mesh_triangles_mean",
     "num_components_mean",
     "largest_component_fraction_mean",
     "visible_coverage_at_tau_mean",
@@ -75,10 +67,6 @@ SUMMARY_FIELDS = [
     "normalized_chamfer_mean_mean",
 ]
 NUMERIC_FIELDS = [
-    "masked_valid_ratio",
-    "masked_points",
-    "mesh_vertices",
-    "mesh_triangles",
     "num_components",
     "largest_component_fraction",
     "visible_coverage_at_tau",
@@ -224,9 +212,6 @@ def run(depth_method: str, rock_id: str, keep_ratio: float, recon_method: str):
         keep_ratio=keep_ratio,
         seed=stable_seed(depth_method, rock_id, keep_ratio),
     )
-    masked_valid_ratio = float(
-        np.mean(np.isfinite(masked_depth) & (masked_depth > 0))
-    )
 
     ref_dir = TMP_ROOT / depth_method / rock_id / f"keep_{int(keep_ratio * 100)}"
     ref_dir.mkdir(parents=True, exist_ok=True)
@@ -234,7 +219,7 @@ def run(depth_method: str, rock_id: str, keep_ratio: float, recon_method: str):
     save_point_cloud(visible_path, reference_pcd)
     mesh_path = ref_dir / f"{recon_method}.ply"
 
-    masked_pcd, mesh = reconstruct_mesh(recon_method, masked_depth, rock_id)
+    _, mesh = reconstruct_mesh(recon_method, masked_depth, rock_id)
     save_mesh(mesh_path, mesh)
     metrics = evaluate_one(
         mesh_path=mesh_path,
@@ -248,8 +233,6 @@ def run(depth_method: str, rock_id: str, keep_ratio: float, recon_method: str):
         "recon_method": recon_method,
         "keep_ratio": keep_ratio,
         "status": "ok",
-        "masked_valid_ratio": masked_valid_ratio,
-        "masked_points": len(np.asarray(masked_pcd.points)),
         **metrics,
     }
 
